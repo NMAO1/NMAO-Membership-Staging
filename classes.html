@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Class Schedule</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Lato:wght@300;400;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --gold:#C9A84C; --black:#0A0A0A; --surface:#141414; --surf2:#1A1A1A;
+      --border:#2A2520; --white:#F5F0E8; --muted:#7A7060; --muted2:#9A8F80;
+      --green:#5A9A6A; --red:#C07070;
+      --font-display:'Cormorant Garamond',serif; --font-ui:'Lato',sans-serif;
+    }
+    body { background:var(--black); color:var(--white); font-family:var(--font-ui);
+      min-height:100vh; display:flex; flex-direction:column; align-items:center; padding:1.5rem 1rem 4rem; }
+    .page-header { text-align:center; margin-bottom:1.25rem; }
+    /* Embed mode: drop full-page chrome so it sits cleanly inside a host-site iframe. */
+    body.embed { background:transparent; padding:0.5rem; min-height:0; }
+    body.embed .page-header { display:none; }
+    .school-logo-img { max-height:52px; max-width:150px; object-fit:contain; margin-bottom:0.35rem; }
+    .page-logo { font-family:var(--font-display); font-size:1.6rem; color:var(--gold);
+      letter-spacing:0.22em; text-transform:uppercase; }
+    .page-headline { font-size:0.82rem; color:var(--muted2); margin-top:0.4rem; letter-spacing:0.04em; }
+    body.embed-compact { font-size:0.9em; }   /* §EMBED-STYLE: per-embed 'compact' density */
+    .container { width:100%; max-width:520px; }
+    .error-box { background:rgba(192,112,112,0.12); border:1px solid var(--red); color:var(--red);
+      padding:1rem; text-align:center; font-size:0.9rem; }
+
+    .view-bar { display:flex; justify-content:space-between; align-items:center; gap:0.5rem; margin-bottom:1rem; flex-wrap:wrap; }
+    .view-toggle { display:inline-flex; border:1px solid var(--border); border-radius:6px; overflow:hidden; }
+    .view-toggle button { background:var(--surface); color:var(--muted2); border:none; padding:0.45rem 0.9rem;
+      font-family:var(--font-ui); font-size:0.8rem; cursor:pointer; }
+    .view-toggle button.active { background:var(--gold); color:var(--black); font-weight:700; }
+    .date-nav { display:inline-flex; align-items:center; gap:0.75rem; }
+    .date-nav button { background:var(--surface); color:var(--white); border:1px solid var(--border);
+      width:32px; height:32px; border-radius:6px; cursor:pointer; }
+    #rangeLabel { font-size:0.85rem; color:var(--muted2); min-width:120px; text-align:center; }
+
+    .day-group { margin-bottom:1.5rem; }
+    .day-head { font-family:var(--font-display); font-size:1.15rem; color:var(--gold);
+      border-bottom:1px solid var(--border); padding-bottom:0.3rem; margin-bottom:0.75rem; }
+    .class-card { background:var(--surface); border:1px solid var(--border); border-left:3px solid var(--gold);
+      padding:0.85rem 1rem; margin-bottom:0.7rem; }
+    .cc-top { display:flex; justify-content:space-between; align-items:baseline; gap:0.5rem; }
+    .cc-name { font-size:1rem; font-weight:700; color:var(--white); }
+    .cc-time { font-size:0.82rem; color:var(--gold); white-space:nowrap; }
+    .cc-meta { font-size:0.76rem; color:var(--muted2); margin-top:0.2rem; }
+    .cc-spots { font-size:0.74rem; color:var(--muted); margin-top:0.15rem; }
+    .cc-spots.low { color:var(--gold); }
+    .cc-full { font-size:0.74rem; color:var(--red); margin-top:0.15rem; }
+    .cc-actions { display:flex; gap:0.5rem; margin-top:0.7rem; flex-wrap:wrap; }
+    .btn { font-family:var(--font-ui); font-size:0.82rem; padding:0.5rem 0.9rem; border-radius:6px; cursor:pointer; border:1px solid var(--gold); }
+    .btn-primary { background:var(--gold); color:var(--black); font-weight:700; border:none; }
+    .btn-ghost { background:transparent; color:var(--gold); }
+    .btn:disabled { opacity:0.45; cursor:not-allowed; }
+    .empty { text-align:center; color:var(--muted); font-size:0.9rem; padding:2rem 0; }
+
+    .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.75); display:none;
+      align-items:center; justify-content:center; padding:1rem; z-index:50; }
+    .modal-overlay.active { display:flex; }
+    .modal-card { background:var(--surf2); border:1px solid var(--border); width:100%; max-width:420px;
+      padding:1.5rem; position:relative; max-height:90vh; overflow-y:auto; }
+    .modal-close { position:absolute; top:0.75rem; right:0.9rem; background:none; border:none; color:var(--muted2);
+      font-size:1.1rem; cursor:pointer; }
+    .modal-title { font-family:var(--font-display); font-size:1.3rem; color:var(--gold); margin-bottom:0.25rem; }
+    .modal-sub { font-size:0.8rem; color:var(--muted2); margin-bottom:1rem; }
+    .field { margin-bottom:0.8rem; }
+    .field label { display:block; font-size:0.74rem; color:var(--muted2); margin-bottom:0.25rem; text-transform:uppercase; letter-spacing:0.06em; }
+    .field input[type=text], .field input[type=email], .field input[type=tel] {
+      width:100%; background:var(--black); border:1px solid var(--border); color:var(--white);
+      padding:0.6rem 0.7rem; font-family:var(--font-ui); font-size:0.9rem; border-radius:4px; }
+    .consent { display:flex; gap:0.5rem; align-items:flex-start; font-size:0.76rem; color:var(--muted2); margin-bottom:1rem; }
+    .consent input { margin-top:0.2rem; }
+    .modal-msg { font-size:0.84rem; margin-top:0.5rem; min-height:1.1rem; }
+    .modal-msg.err { color:var(--red); } .modal-msg.ok { color:var(--green); }
+    .result-icon { font-size:2.2rem; color:var(--green); text-align:center; margin-bottom:0.5rem; }
+    .result-icon.bad { color:var(--red); }
+    .center { text-align:center; }
+  .shift-banner{ border:1px solid var(--gold); color:var(--gold); border-radius:8px; padding:0.7rem 1rem; margin-bottom:1rem; font-size:0.88rem; }
+    .shift-banner strong{ color:var(--white); }
+    .week-grid{ display:grid; grid-template-columns:repeat(7,1fr); gap:0.4rem; }
+    .wg-col{ background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:0.4rem; min-height:84px; }
+    .wg-col.today{ border-color:var(--gold); }
+    .wg-head{ font-size:0.66rem; text-transform:uppercase; letter-spacing:0.08em; color:var(--muted); text-align:center; margin-bottom:0.45rem; }
+    .wg-head span{ display:block; font-size:1rem; color:var(--white); letter-spacing:normal; margin-top:0.1rem; }
+    .wg-pill{ background:rgba(0,0,0,0.22); border:1px solid var(--border); border-radius:6px; padding:0.32rem 0.4rem; margin-bottom:0.32rem; cursor:pointer; }
+    .wg-pill:hover{ border-color:var(--gold); }
+    .wg-pill.full{ opacity:0.45; }
+    .wg-time{ display:block; font-size:0.7rem; color:var(--gold); font-weight:600; }
+    .wg-name{ display:block; font-size:0.72rem; color:var(--white); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .wg-empty{ height:6px; }
+    @media (max-width:720px){ .week-grid{ grid-template-columns:repeat(7,minmax(96px,1fr)); overflow-x:auto; -webkit-overflow-scrolling:touch; } }
+</style>
+</head>
+<body>
+  <div class="page-header">
+    <img id="schoolLogoImg" class="school-logo-img" alt="" />
+    <div id="schoolLogoText" class="page-logo">&nbsp;</div>
+    <div id="pageHeadline" class="page-headline"></div>
+  </div>
+
+  <div class="container">
+    <div id="errorBox" class="error-box" style="display:none"></div>
+    <div id="mainUI" style="display:none">
+      <div class="view-bar">
+        <div class="view-toggle">
+          <button data-view="day" onclick="setView('day')">Day</button>
+          <button data-view="week" onclick="setView('week')">Week</button>
+          <button data-view="month" onclick="setView('month')">Month</button>
+        </div>
+        <div class="date-nav">
+          <button onclick="navDate(-1)" aria-label="Previous"><i class="fa-solid fa-chevron-left"></i></button>
+          <span id="rangeLabel"></span>
+          <button onclick="navDate(1)" aria-label="Next"><i class="fa-solid fa-chevron-right"></i></button>
+        </div>
+      </div>
+      <div id="shiftBanner" class="shift-banner" style="display:none"></div>
+      <div id="scheduleBox"></div>
+    </div>
+  </div>
+
+  <div id="modalOverlay" class="modal-overlay">
+    <div class="modal-card">
+      <button class="modal-close" onclick="closeModal()"><i class="fa-solid fa-xmark"></i></button>
+      <div id="modalBody"></div>
+    </div>
+  </div>
+
+  <script>
+    var SURL = 'https://ykiozrdwudawpxdzbbyc.supabase.co';
+    var SKEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlraW96cmR3dWRhd3B4ZHpiYnljIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwNTAwODQsImV4cCI6MjA5MDYyNjA4NH0.MRv1FnXUpGA0wEWe4cW6lSQFcNb7W0Y_nErSZe1hr8c';
+    var sb = supabase.createClient(SURL, SKEY);
+    var EF_URL = SURL + '/functions/v1/book-public-class';
+
+    // Ad attribution: capture UTM params on load (persist for the session so they
+    // survive navigation within the site before the prospect books a trial).
+    var NMAO_UTM = (function(){
+      try{
+        var out={}, qs=new URLSearchParams(location.search), any=false;
+        ['source','medium','campaign','term','content'].forEach(function(k){
+          var v=qs.get('utm_'+k); if(v){ out[k]=String(v).slice(0,200); any=true; }
+        });
+        if(any){ try{ sessionStorage.setItem('nmao_utm', JSON.stringify(out)); }catch(e){} return out; }
+        try{ var s=sessionStorage.getItem('nmao_utm'); if(s) return JSON.parse(s); }catch(e){}
+        return {};
+      }catch(e){ return {}; }
+    })();
+
+    var DAYS = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+    var DAY_LABEL = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+    var MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+    var slug = '', school = null, view = 'week', anchor = new Date(), rows = [], showSpots = true, closures = [];
+    // Is a date closed? Handles one-off ranges and recurring-annual month/day spans (incl. year-wrap).
+    function closureFor(dstr){
+      for(var i=0;i<closures.length;i++){ var c=closures[i];
+        if(c.recurring_annual){ var md=dstr.slice(5), s=c.start_date.slice(5), e=c.end_date.slice(5);
+          if(s<=e ? (md>=s&&md<=e) : (md>=s||md<=e)) return c;
+        } else if(dstr>=c.start_date && dstr<=c.end_date){ return c; }
+      }
+      return null;
+    }
+    function goPortalLogin(){ location.href='https://app.nmao.us/portal.html'+(slug?('?s='+encodeURIComponent(slug)):''); }
+    var lastReserve = null; // {token, contact} for the confirmation cancel button
+
+    function ymd(d){ var m=d.getMonth()+1, day=d.getDate(); return d.getFullYear()+'-'+(m<10?'0':'')+m+'-'+(day<10?'0':'')+day; }
+    // §TZ — "today" must be the SCHOOL's local day, not the viewer's browser/UTC day, or the
+    // schedule renders the wrong day's classes near local midnight (or for out-of-tz viewers).
+    var SCHOOL_TZ = 'America/New_York';   // set from schools.timezone in loadSchool (NULL → Eastern default)
+    function tzToday(){ try{ return new Intl.DateTimeFormat('en-CA',{timeZone:SCHOOL_TZ,year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date()); }catch(e){ return new Intl.DateTimeFormat('en-CA',{year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date()); } }
+    function schoolAnchor(){ return new Date(tzToday()+'T12:00:00'); }   // school "today" as a local-noon Date, safe for get*/set* math
+    function fmtTime(t){ if(!t) return ''; var p=String(t).split(':'); var h=parseInt(p[0],10); var min=p[1]||'00';
+      var ap=h>=12?'PM':'AM'; var h12=h%12; if(h12===0)h12=12; return h12+':'+min+' '+ap; }
+    function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+    function showError(m){ var e=document.getElementById('errorBox'); e.textContent=m; e.style.display='block'; document.getElementById('mainUI').style.display='none'; }
+
+    window.onload = async function(){
+      var p = new URLSearchParams(window.location.search);
+      var embedParam = p.get('embed');
+      slug = p.get('s') || p.get('slug') || '';
+      if(embedParam){ document.body.classList.add('embed'); nmaoInitEmbed(); }
+      if(embedParam && embedParam !== '1'){
+        var ok = await loadEmbedConfig(embedParam);
+        if(!ok){ showError('This embed link is not available.'); return; }
+      }
+      if(!slug){ showError('No schedule link found. Please use the link provided by the school.'); return; }
+      await loadSchool();
+    };
+
+    var embedFilter = null;
+
+    async function loadEmbedConfig(embedId){
+      try {
+        var r = await sb.rpc('get_schedule_embed', { p_embed_id: embedId });
+        if(r.error || !r.data || !r.data.length) return false;
+        var cfg = r.data[0];
+        slug = cfg.slug || '';
+        embedFilter = { type: cfg.filter_type || 'all', values: cfg.filter_values || [] };
+        window.__embedCfg = cfg;   // §EMBED-STYLE: per-embed colors + default_view + headline + logo/density
+        if(cfg.embed_name){ document.title = cfg.embed_name; }
+        return !!slug;
+      } catch(e){ return false; }
+    }
+
+    function applyEmbedFilter(list){
+      if(!embedFilter || embedFilter.type === 'all') return list;
+      var vals = embedFilter.values || [];
+      if(!vals.length) return list;
+      var key = { program:'program_id', classes:'class_id', style:'style', age:'age_group', level:'level', instructor:'instructor_name' }[embedFilter.type];
+      if(!key) return list;
+      return list.filter(function(row){ return vals.indexOf(row[key]) !== -1; });
+    }
+
+    function nmaoPostHeight(){
+      if(window.parent === window) return;
+      var h = Math.ceil(document.documentElement.getBoundingClientRect().height);
+      window.parent.postMessage({ nmaoEmbed:true, height:h }, '*');
+    }
+    function nmaoInitEmbed(){
+      window.addEventListener('resize', nmaoPostHeight);
+      if('ResizeObserver' in window){ try{ new ResizeObserver(nmaoPostHeight).observe(document.body); }catch(e){} }
+      setTimeout(nmaoPostHeight, 300);
+    }
+
+    async function loadSchool(){
+      var r = await sb.from('schools')
+        .select('id,name,logo_url,color,bg_color,border_color,surface_color,font_color,font_family,public_booking_show_spots,public_booking_default_view,public_booking_headline,timezone')
+        .eq('slug', slug).maybeSingle();
+      if(r.error || !r.data){ showError('This schedule link is not active or does not exist. Please contact the school.'); return; }
+      school = r.data;
+      SCHOOL_TZ = school.timezone || 'America/New_York';
+      anchor = schoolAnchor();   // re-anchor to the school's local today now that its tz is known
+      document.title = 'Class Schedule \u2014 ' + school.name;
+      document.getElementById('schoolLogoText').textContent = school.name;
+      if(school.logo_url){
+        var img=document.getElementById('schoolLogoImg'); img.src=school.logo_url; img.style.display='block';
+        document.getElementById('schoolLogoText').style.display='none';
+      }
+      if(school.color)        document.documentElement.style.setProperty('--gold', school.color);
+      if(school.bg_color)     document.documentElement.style.setProperty('--black', school.bg_color);
+      if(school.border_color) document.documentElement.style.setProperty('--border', school.border_color);
+      if(school.surface_color){ document.documentElement.style.setProperty('--surface', school.surface_color); document.documentElement.style.setProperty('--surf2', school.surface_color); }
+      if(school.font_color)   document.documentElement.style.setProperty('--white', school.font_color);
+      if(school.font_family)  document.documentElement.style.setProperty('--font-display', "'"+school.font_family+"',serif");
+      document.getElementById('pageHeadline').textContent = school.public_booking_headline || '';
+      showSpots = school.public_booking_show_spots !== false;
+      var _dv = school.public_booking_default_view;
+      // §EMBED-STYLE — a schedule embed can override the app theme, headline, logo, density and default view.
+      var _ec = window.__embedCfg;
+      if(_ec){
+        if(_ec.accent_color)  document.documentElement.style.setProperty('--gold', _ec.accent_color);
+        if(_ec.bg_color)      document.documentElement.style.setProperty('--black', _ec.bg_color);
+        if(_ec.border_color)  document.documentElement.style.setProperty('--border', _ec.border_color);
+        if(_ec.surface_color){ document.documentElement.style.setProperty('--surface', _ec.surface_color); document.documentElement.style.setProperty('--surf2', _ec.surface_color); }
+        if(_ec.font_color)    document.documentElement.style.setProperty('--white', _ec.font_color);
+        if(_ec.font_family)   document.documentElement.style.setProperty('--font-display', "'"+_ec.font_family+"',serif");
+        if(_ec.headline)      document.getElementById('pageHeadline').textContent = _ec.headline;
+        if(_ec.show_logo===false){ var _li=document.getElementById('schoolLogoImg'); if(_li) _li.style.display='none'; var _lt=document.getElementById('schoolLogoText'); if(_lt) _lt.style.display='none'; }
+        if(_ec.density==='compact') document.body.classList.add('embed-compact');
+        if(_ec.default_view)  _dv = _ec.default_view;
+      }
+      view = (_dv==='day'||_dv==='month') ? _dv : 'week';
+      document.getElementById('mainUI').style.display='block';
+      syncViewButtons();
+      await loadSchedule();
+    }
+
+    function syncViewButtons(){
+      var btns=document.querySelectorAll('.view-toggle button');
+      for(var i=0;i<btns.length;i++){ btns[i].classList.toggle('active', btns[i].getAttribute('data-view')===view); }
+    }
+    function setView(v){ view=v; anchor=schoolAnchor(); syncViewButtons(); loadSchedule(); }
+    function navDate(dir){
+      if(view==='day') anchor.setDate(anchor.getDate()+dir);
+      else if(view==='week') anchor.setDate(anchor.getDate()+7*dir);
+      else { anchor.setMonth(anchor.getMonth()+dir); }
+      loadSchedule();
+    }
+    function computeRange(){
+      var s=new Date(anchor), e=new Date(anchor);
+      if(view==='day'){ /* same day */ }
+      else if(view==='week'){ s.setDate(anchor.getDate()-anchor.getDay()); e=new Date(s); e.setDate(s.getDate()+6); }
+      else { s=new Date(anchor.getFullYear(),anchor.getMonth(),1); e=new Date(anchor.getFullYear(),anchor.getMonth()+1,0); }
+      return { start:s, end:e };
+    }
+    function rangeLabel(s,e){
+      if(view==='day') return DAY_LABEL[s.getDay()]+', '+MONTHS[s.getMonth()].slice(0,3)+' '+s.getDate();
+      if(view==='month') return MONTHS[s.getMonth()]+' '+s.getFullYear();
+      return MONTHS[s.getMonth()].slice(0,3)+' '+s.getDate()+' \u2013 '+MONTHS[e.getMonth()].slice(0,3)+' '+e.getDate();
+    }
+
+    async function loadSchedule(){
+      var rg=computeRange();
+      document.getElementById('rangeLabel').textContent = rangeLabel(rg.start, rg.end);
+      document.getElementById('scheduleBox').innerHTML = '<div class="empty">Loading\u2026</div>';
+      var r = await sb.rpc('get_public_class_schedule', { p_slug:slug, p_start:ymd(rg.start), p_end:ymd(rg.end) });
+      if(r.error){ document.getElementById('scheduleBox').innerHTML='<div class="empty">Could not load the schedule.</div>'; return; }
+      rows = r.data || [];
+      rows = applyEmbedFilter(rows);
+      try{ var _cl = await sb.rpc('get_school_closures',{ p_slug:slug, p_start:ymd(rg.start), p_end:ymd(rg.end) }); closures = (_cl&&_cl.data)?_cl.data:[]; }catch(e){ closures=[]; }
+      loadShiftBanner(rg);
+      renderSchedule();
+    }
+
+    function renderSchedule(){
+      var box=document.getElementById('scheduleBox');
+      if(!rows.length){ box.innerHTML='<div class="empty">'+(closures.length?'The school is closed during this period.':'No classes scheduled in this range.')+'</div>'; return; }
+      var byDay={}, order=[];
+      for(var i=0;i<rows.length;i++){
+        var d=rows[i].session_date;
+        if(!byDay[d]){ byDay[d]=[]; order.push(d); }
+        byDay[d].push(rows[i]);
+      }
+      var html='';
+      for(var j=0;j<order.length;j++){
+        var dstr=order[j]; var parts=dstr.split('-');
+        var dd=new Date(parseInt(parts[0],10),parseInt(parts[1],10)-1,parseInt(parts[2],10));
+        html += '<div class="day-group"><div class="day-head">'+DAY_LABEL[dd.getDay()]+', '+MONTHS[dd.getMonth()].slice(0,3)+' '+dd.getDate()+'</div>';
+        var list=byDay[dstr];
+        for(var k=0;k<list.length;k++){
+          var c=list[k]; var idx=rows.indexOf(c);
+          var full = (c.capacity!=null && c.spots_left!=null && c.spots_left<=0);
+          html += '<div class="class-card">'
+            + '<div class="cc-top"><span class="cc-name">'+esc(c.class_name)+'</span><span class="cc-time">'+fmtTime(c.start_time)+(c.end_time?(' \u2013 '+fmtTime(c.end_time)):'')+'</span></div>'
+            + '<div class="cc-meta">'+esc(c.program_name||'')+(c.instructor_name?(' \u00b7 with '+esc(c.instructor_name)):'')+'</div>';
+          if(showSpots && c.capacity!=null && c.spots_left!=null){
+            if(full) html += '<div class="cc-full">Class full</div>';
+            else html += '<div class="cc-spots'+(c.spots_left<=3?' low':'')+'">'+c.spots_left+' spot'+(c.spots_left===1?'':'s')+' left</div>';
+          }
+          html += '<div class="cc-actions">';
+          html += '<button class="btn btn-primary" '+(full?'disabled':'')+' onclick="goPortalLogin()">Log in to book</button>';
+          if(c.trial_enabled) html += '<button class="btn btn-ghost" '+(full?'disabled':'')+' onclick="openTrial('+idx+')">Try a free class</button>';
+          html += '</div></div>';
+        }
+        html += '</div>';
+      }
+      box.innerHTML=html;
+    }
+
+    function renderWeekGrid(box){
+      var rg=computeRange();
+      var byDay={};
+      for(var i=0;i<rows.length;i++){ var d=rows[i].session_date; (byDay[d]=byDay[d]||[]).push(rows[i]); }
+      var todayStr=tzToday();
+      var cur=new Date(rg.start);
+      var html='<div class="week-grid">';
+      for(var n=0;n<7;n++){
+        var dstr=ymd(cur);
+        html+='<div class="wg-col'+(dstr===todayStr?' today':'')+'">';
+        html+='<div class="wg-head">'+DAY_LABEL[cur.getDay()].slice(0,3)+'<span>'+cur.getDate()+'</span></div>';
+        var list=byDay[dstr]||[];
+        var _cd=closureFor(dstr);
+        if(_cd){ html+='<div class="wg-empty" style="color:#E07070;font-size:0.7rem;text-align:center;padding:0.4rem 0.2rem" title="'+esc(_cd.reason||'Closed')+'"><i class="fa-solid fa-calendar-xmark"></i><br>Closed</div>'; }
+        else if(!list.length){ html+='<div class="wg-empty"></div>'; }
+        else{
+          for(var k=0;k<list.length;k++){
+            var c=list[k]; var idx=rows.indexOf(c);
+            var full=(c.capacity!=null && c.spots_left!=null && c.spots_left<=0);
+            html+='<div class="wg-pill'+(full?' full':'')+'" onclick="openClassQuick('+idx+')">';
+            html+='<span class="wg-time">'+fmtTime(c.start_time)+'</span><span class="wg-name">'+esc(c.class_name)+'</span></div>';
+          }
+        }
+        html+='</div>';
+        cur.setDate(cur.getDate()+1);
+      }
+      html+='</div>';
+      box.innerHTML=html;
+    }
+
+    function openClassQuick(idx){
+      var c=rows[idx];
+      var parts=c.session_date.split('-'); var dd=new Date(parseInt(parts[0],10),parseInt(parts[1],10)-1,parseInt(parts[2],10));
+      var full=(c.capacity!=null && c.spots_left!=null && c.spots_left<=0);
+      var h='<div class="cc-name" style="font-size:1.1rem;font-weight:600">'+esc(c.class_name)+'</div>';
+      h+='<div class="cc-meta">'+DAY_LABEL[dd.getDay()]+' '+MONTHS[dd.getMonth()].slice(0,3)+' '+dd.getDate()+' at '+fmtTime(c.start_time)+(c.end_time?(' - '+fmtTime(c.end_time)):'')+'</div>';
+      if(c.program_name||c.instructor_name){ h+='<div class="cc-meta">'+esc(c.program_name||'')+(c.instructor_name?(' with '+esc(c.instructor_name)):'')+'</div>'; }
+      if(showSpots && c.capacity!=null && c.spots_left!=null){ h+= full?'<div class="cc-full">Class full</div>':'<div class="cc-spots'+(c.spots_left<=3?' low':'')+'">'+c.spots_left+' spot'+(c.spots_left===1?'':'s')+' left</div>'; }
+      h+='<div class="cc-actions" style="margin-top:1rem">';
+      h+='<button class="btn btn-primary" '+(full?'disabled':'')+' onclick="goPortalLogin()">Log in to book</button>';
+      if(c.trial_enabled){ h+='<button class="btn btn-ghost" '+(full?'disabled':'')+' onclick="openTrial('+idx+')">Try a free class</button>'; }
+      h+='</div>';
+      openModal(h);
+    }
+
+    async function loadShiftBanner(rg){
+      var box=document.getElementById('shiftBanner'); if(!box) return;
+      // Closures take priority — show a clear "Closed" notice with the reason for the first closed day in view.
+      var cc=null, cur=new Date(rg.start), endd=new Date(rg.end);
+      while(cur<=endd){ var f=closureFor(ymd(cur)); if(f){ cc=f; break; } cur.setDate(cur.getDate()+1); }
+      if(cc){
+        var reason=cc.reason||'Closed';
+        var sp=cc.start_date.split('-'), ep=cc.end_date.split('-');
+        var sd=new Date(parseInt(sp[0],10),parseInt(sp[1],10)-1,parseInt(sp[2],10));
+        var ed=new Date(parseInt(ep[0],10),parseInt(ep[1],10)-1,parseInt(ep[2],10));
+        var range=(cc.start_date===cc.end_date)?(MONTHS[sd.getMonth()].slice(0,3)+' '+sd.getDate())
+                    :(MONTHS[sd.getMonth()].slice(0,3)+' '+sd.getDate()+' – '+MONTHS[ed.getMonth()].slice(0,3)+' '+ed.getDate());
+        box.innerHTML='<i class="fa-solid fa-calendar-xmark"></i> <strong>Closed</strong> '+range+(cc.recurring_annual?' (every year)':'')+' &mdash; '+esc(reason)+'. No classes on these dates.';
+        box.style.background='rgba(224,112,112,0.12)'; box.style.borderColor='#E07070'; box.style.color='#E07070';
+        box.style.display=''; return;
+      }
+      box.style.background=''; box.style.borderColor=''; box.style.color='';
+      try{
+        var r=await sb.rpc('get_public_shifts',{ p_slug:slug, p_start:ymd(rg.start), p_end:ymd(rg.end) });
+        var sh=(r&&r.data)?r.data:[];
+        if(!sh.length){ box.style.display='none'; box.innerHTML=''; return; }
+        var s=sh[0];
+        var sp=s.start_date.split('-'), ep=s.end_date.split('-');
+        var sd=new Date(parseInt(sp[0],10),parseInt(sp[1],10)-1,parseInt(sp[2],10));
+        var ed=new Date(parseInt(ep[0],10),parseInt(ep[1],10)-1,parseInt(ep[2],10));
+        var range=MONTHS[sd.getMonth()].slice(0,3)+' '+sd.getDate()+' - '+MONTHS[ed.getMonth()].slice(0,3)+' '+ed.getDate();
+        var lead=(tzToday()<s.start_date)?'Upcoming schedule change':'Schedule updated';
+        box.innerHTML='<i class="fa-solid fa-calendar-week"></i> <strong>'+esc(s.name)+'</strong> - '+lead+' for '+range+'. The times shown reflect it.';
+        box.style.display='';
+      }catch(e){ box.style.display='none'; }
+    }
+
+    function openModal(inner){ document.getElementById('modalBody').innerHTML=inner; document.getElementById('modalOverlay').classList.add('active'); }
+    function closeModal(){ document.getElementById('modalOverlay').classList.remove('active'); lastReserve=null; }
+
+    function classSummary(c){
+      var parts=c.session_date.split('-'); var dd=new Date(parseInt(parts[0],10),parseInt(parts[1],10)-1,parseInt(parts[2],10));
+      return esc(c.class_name)+' \u00b7 '+DAY_LABEL[dd.getDay()]+' '+MONTHS[dd.getMonth()].slice(0,3)+' '+dd.getDate()+' \u00b7 '+fmtTime(c.start_time);
+    }
+
+    // (Removed dead openReserve/submitReserve/submitCancel — public page uses "Log in to book" + "Try a free class".)
+
+    function openTrial(idx){
+      var c=rows[idx];
+      openModal(
+        '<div class="modal-title">Try a free class</div>'+
+        '<div class="modal-sub">'+classSummary(c)+'</div>'+
+        '<div class="field"><label>First name</label><input type="text" id="tFirst" /></div>'+
+        '<div class="field"><label>Last name</label><input type="text" id="tLast" /></div>'+
+        '<div class="field"><label>Email</label><input type="email" id="tEmail" /></div>'+
+        '<div class="field"><label>Phone</label><input type="tel" id="tPhone" /></div>'+
+        '<label class="consent"><input type="checkbox" id="tSms" /> <span>Text me class reminders and updates. Msg &amp; data rates may apply.</span></label>'+
+        '<button class="btn btn-primary" style="width:100%" id="tBtn" onclick="submitTrial('+idx+')">Book my free class</button>'+
+        '<div class="modal-msg" id="tMsg"></div>'
+      );
+    }
+    async function submitTrial(idx){
+      var c=rows[idx];
+      var first=document.getElementById('tFirst').value.trim();
+      var last=document.getElementById('tLast').value.trim();
+      var email=document.getElementById('tEmail').value.trim();
+      var phone=document.getElementById('tPhone').value.trim();
+      var sms=document.getElementById('tSms').checked;
+      var msg=document.getElementById('tMsg'); msg.className='modal-msg';
+      if(!first || !email){ msg.className='modal-msg err'; msg.textContent='Please enter your first name and email.'; return; }
+      var btn=document.getElementById('tBtn'); btn.disabled=true; msg.textContent='Booking\u2026';
+      var res=await callEF({ action:'trial', slug:slug, class_id:c.class_id, session_date:c.session_date, first:first, last:last, email:email, phone:phone, sms_consent:sms, utm:NMAO_UTM });
+      if(!res || !res.ok){ msg.className='modal-msg err'; msg.textContent=(res&&res.error)||'Something went wrong.'; btn.disabled=false; return; }
+      openModal(
+        '<div class="result-icon"><i class="fa-solid fa-circle-check"></i></div>'+
+        '<div class="center" style="font-size:1rem;margin-bottom:0.4rem">'+esc(res.message||'You are booked!')+'</div>'+
+        '<div class="modal-sub center">'+classSummary(c)+'</div>'+
+        '<a href="join.html?s='+encodeURIComponent(slug)+'" class="btn btn-ghost" style="display:block;text-align:center;width:100%;margin-top:0.6rem;text-decoration:none">Become a member</a>'+
+        '<button class="btn btn-primary" style="width:100%;margin-top:0.5rem" onclick="closeModal();loadSchedule()">Done</button>'
+      );
+    }
+
+    async function callEF(payload){
+      try{
+        var r=await fetch(EF_URL, { method:'POST',
+          headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer '+SKEY, 'apikey':SKEY },
+          body: JSON.stringify(payload) });
+        return await r.json();
+      }catch(e){ return { ok:false, error:'Network error. Please try again.' }; }
+    }
+  </script>
+</body>
+</html>

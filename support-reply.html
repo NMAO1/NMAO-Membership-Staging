@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover" />
+  <title>Support Reply — NMAO</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Lato:wght@300;400;700&display=swap" rel="stylesheet" />
+  <style>
+    /* Team-side reply page for the Support Desk (token-authed, no login). */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --gold:#C9A84C; --black:#0A0A0A; --surface:#141414; --surface2:#1A1A1A;
+      --border:#2A2520; --white:#F5F0E8; --muted:#7A7060; --muted2:#9A8F80;
+      --green:#5A9A6A; --red:#C07070;
+      --font-display:'Cormorant Garamond',serif; --font-ui:'Lato',sans-serif;
+    }
+    html, body { height:100%; }
+    body { background:var(--black); color:var(--white); font-family:var(--font-ui);
+      height:100vh; height:100dvh; display:flex; flex-direction:column; overflow:hidden; }
+
+    .chat-header { flex-shrink:0; padding:0.9rem 1.15rem; border-bottom:1px solid var(--border); background:var(--surface); }
+    .chat-top { display:flex; align-items:flex-start; justify-content:space-between; gap:0.75rem; }
+    .chat-school { font-family:var(--font-display); font-size:0.72rem; letter-spacing:0.22em; text-transform:uppercase; color:var(--gold); margin-bottom:0.1rem; }
+    .chat-name { font-family:var(--font-display); font-size:1.35rem; color:var(--white); line-height:1.1; }
+    .assign-row { display:flex; align-items:center; gap:0.5rem; margin-top:0.55rem; flex-wrap:wrap; }
+    .pill { font-size:0.66rem; letter-spacing:0.08em; text-transform:uppercase; padding:0.25rem 0.55rem; border:1px solid var(--border); color:var(--muted2); border-radius:2px; }
+    .pill.open { color:var(--green); border-color:var(--green); }
+    .pill.claimed { color:var(--gold); border-color:var(--gold); }
+    .pill.resolved { color:var(--muted); }
+    .mini-btn { background:transparent; border:1px solid var(--border); color:var(--muted2); font-family:var(--font-ui); font-size:0.7rem; letter-spacing:0.06em; text-transform:uppercase; padding:0.3rem 0.6rem; cursor:pointer; }
+    .mini-btn:hover { border-color:var(--gold); color:var(--gold); }
+    .agent-field { margin-top:0.55rem; }
+    .agent-field input { width:100%; background:var(--black); border:1px solid var(--border); color:var(--white); font-family:var(--font-ui); font-size:0.9rem; padding:0.5rem 0.7rem; outline:none; }
+    .agent-field label { display:block; font-size:0.62rem; letter-spacing:0.16em; text-transform:uppercase; color:var(--muted); margin-bottom:0.3rem; }
+
+    .chat-messages { flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:1.15rem; display:flex; flex-direction:column; gap:0.6rem; }
+    .bubble { max-width:82%; padding:0.65rem 0.9rem; font-size:0.95rem; line-height:1.4; color:var(--white); word-wrap:break-word; white-space:pre-wrap; }
+    .bubble.inbound { align-self:flex-start; background:var(--surface); border:1px solid var(--border); border-radius:3px 14px 14px 3px; }
+    .bubble.outbound { align-self:flex-end; background:color-mix(in srgb, var(--gold) 16%, transparent); border:1px solid var(--gold); border-radius:14px 3px 3px 14px; }
+    .bubble-meta { font-size:0.66rem; color:var(--muted2); margin-top:0.25rem; }
+    .chat-empty { margin:auto; text-align:center; color:var(--muted); font-style:italic; font-size:0.9rem; }
+
+    .chat-reply { flex-shrink:0; padding:0.75rem; padding-bottom:calc(0.75rem + env(safe-area-inset-bottom,0)); border-top:1px solid var(--border); background:var(--surface); display:flex; gap:0.5rem; align-items:flex-end; }
+    .chat-reply textarea { flex:1; background:var(--black); border:1px solid var(--border); color:var(--white); font-family:var(--font-ui); font-size:1rem; padding:0.7rem 0.85rem; outline:none; resize:none; max-height:7rem; line-height:1.35; }
+    .chat-reply button { background:var(--gold); color:var(--black); border:none; padding:0 1.1rem; height:2.85rem; cursor:pointer; font-size:1rem; font-weight:700; flex-shrink:0; }
+    .chat-reply button:disabled { opacity:0.45; }
+
+    .center-wrap { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:2rem 1.5rem; gap:1rem; text-align:center; }
+    .spinner { width:36px; height:36px; border:3px solid var(--border); border-top-color:var(--gold); border-radius:50%; animation:spin 0.8s linear infinite; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    .center-icon { font-size:2.4rem; } .center-title { font-family:var(--font-display); font-size:1.4rem; }
+    .center-sub { font-size:0.88rem; color:var(--muted2); line-height:1.6; max-width:22rem; }
+    .center-text { font-size:0.82rem; color:var(--muted); letter-spacing:0.08em; }
+    .toast { position:fixed; left:50%; bottom:5.5rem; transform:translateX(-50%); background:var(--surface2); border:1px solid var(--gold); color:var(--white); padding:0.6rem 1rem; font-size:0.82rem; max-width:90%; display:none; z-index:10; }
+    .toast.show { display:block; } .toast.err { border-color:var(--red); color:var(--red); }
+
+    /* ── Quick Answers ── */
+    .qa-bar { flex-shrink:0; border-top:1px solid var(--border); background:var(--surface); padding:0.45rem 0.6rem; display:none; align-items:center; gap:0.5rem; }
+    .qa-toggle { background:transparent; border:1px solid var(--gold); color:var(--gold); font-family:var(--font-ui); font-size:0.72rem; letter-spacing:0.06em; text-transform:uppercase; font-weight:700; padding:0.4rem 0.7rem; cursor:pointer; }
+    .qa-toggle:hover { background:color-mix(in srgb,var(--gold) 14%,transparent); }
+    .qa-hint { font-size:0.66rem; color:var(--muted); }
+    .qa-panel { position:fixed; inset:0; background:var(--black); z-index:30; display:none; flex-direction:column; }
+    .qa-panel.open { display:flex; }
+    .qa-head { flex-shrink:0; padding:0.8rem 0.9rem; border-bottom:1px solid var(--border); background:var(--surface); display:flex; gap:0.6rem; align-items:center; }
+    .qa-head input { flex:1; background:var(--black); border:1px solid var(--border); color:var(--white); font-family:var(--font-ui); font-size:16px; padding:0.6rem 0.8rem; outline:none; }
+    .qa-list { flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:0.6rem; }
+    .qa-item { padding:0.7rem 0.85rem; border:1px solid var(--border); background:var(--surface); margin-bottom:0.5rem; cursor:pointer; border-radius:4px; }
+    .qa-item:hover { border-color:var(--gold); }
+    .qa-item .t { font-size:0.92rem; color:var(--white); }
+    .qa-item .p { font-size:0.74rem; color:var(--muted2); margin-top:0.2rem; line-height:1.45; }
+  </style>
+</head>
+<body>
+  <div class="center-wrap" id="loadingState"><div class="spinner"></div><div class="center-text">Loading question…</div></div>
+
+  <div class="center-wrap" id="errorState" style="display:none">
+    <div class="center-icon">⚠️</div>
+    <div class="center-title">Link Unavailable</div>
+    <div class="center-sub" id="errorMsg">This reply link is invalid or has expired.</div>
+  </div>
+
+  <div class="chat-header" id="chatHeader" style="display:none">
+    <div class="chat-top">
+      <div>
+        <div class="chat-school">NMAO Support Desk</div>
+        <div class="chat-name" id="chatName"></div>
+      </div>
+      <button class="mini-btn" id="resolveBtn" onclick="markResolved()">Resolve</button>
+    </div>
+    <div class="assign-row">
+      <span class="pill" id="statusPill">—</span>
+      <span class="pill" id="assignPill" style="display:none"></span>
+      <button class="mini-btn" id="claimBtn" onclick="claimThread()" style="display:none">Claim this</button>
+    </div>
+    <div class="agent-field">
+      <label for="agentName">Your name (shown to the school)</label>
+      <input type="text" id="agentName" placeholder="e.g. Brad — NMAO" oninput="saveAgent()" />
+    </div>
+  </div>
+
+  <div class="chat-messages" id="chatMessages" style="display:none"></div>
+  <div class="qa-bar" id="qaBar">
+    <button class="qa-toggle" onclick="openQA()">⚡ Quick answers</button>
+    <span class="qa-hint">Insert a ready explanation, then edit &amp; send</span>
+  </div>
+  <div id="qaShotPreview" style="display:none;padding:10px 14px;border-top:1px solid var(--line,#e5e0d5);background:var(--panel,#faf8f3)">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+      <span style="font-size:0.72rem;letter-spacing:0.08em;text-transform:uppercase;color:#B8862C;font-weight:700">📷 Annotated screen — included in the guide link</span>
+      <button class="mini-btn" onclick="hideShot()">Hide</button>
+    </div>
+    <a id="qaShotLink" href="#" target="_blank" rel="noopener"><img id="qaShotImg" alt="annotated screenshot" style="width:100%;max-height:260px;object-fit:contain;object-position:left top;border:1px solid var(--line,#e5e0d5);border-radius:8px"/></a>
+  </div>
+  <div class="chat-reply" id="chatReply" style="display:none">
+    <textarea id="replyInput" rows="1" placeholder="Reply to the school…" oninput="autoGrow(this)" onkeydown="onReplyKey(event)"></textarea>
+    <button id="sendBtn" onclick="sendReply()">Send</button>
+  </div>
+
+  <div class="qa-panel" id="qaPanel">
+    <div class="qa-head">
+      <input id="qaSearch" placeholder="Search answers — e.g. membership, billing, class, waiver…" oninput="renderQA()" />
+      <button class="mini-btn" onclick="closeQA()">Close</button>
+    </div>
+    <div class="qa-list" id="qaList"></div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    var SUPABASE_URL = 'https://ykiozrdwudawpxdzbbyc.supabase.co';
+    var ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlraW96cmR3dWRhd3B4ZHpiYnljIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwNTAwODQsImV4cCI6MjA5MDYyNjA4NH0.MRv1FnXUpGA0wEWe4cW6lSQFcNb7W0Y_nErSZe1hr8c';
+    var SUPPORT_URL = SUPABASE_URL + '/functions/v1/support-reply';
+    var token = null, assigned = null, status = 'open';
+    var pendingShot = null;   // annotated screenshot queued to send with the next reply
+
+    // Quick Answers — ready explanations sourced from the Help Center guides.
+    var GUIDES = [{"id": "lead", "title": "How do I log a new lead?", "steps": ["A prospect just called the front desk.", "Open Leads, then click + Add Lead.", "Enter the prospect's name and number.", "What are they interested in? Where did they hear about you?", "Jot a quick note so anyone can follow up.", "Save — the lead is now in your pipeline."]}, {"id": "membership", "title": "How do I create a membership plan?", "steps": ["A membership plan is what members sign up for.", "Click + Add Membership.", "Name the plan and set its price.", "Pick class access and who can see it.", "Save — the plan is ready to sell at signup."]}, {"id": "product", "title": "How do I add a product to sell?", "steps": ["Sell gear and gis right from the front desk.", "Click + Add Product.", "Name it, categorize it, set the price.", "Show it in POS and the member app.", "Save — it now appears in your point of sale."]}, {"id": "instructor", "title": "How do I add an instructor and set permissions?", "steps": ["Add a coach — and control exactly what they can do.", "Click + Add Instructor.", "Grant only the permissions they need.", "Save — the coach can now check students in."]}, {"id": "program", "title": "How do I add a program?", "steps": ["A program is a discipline you teach — the bucket for classes, plans & belts.", "Click + Add Program.", "Save — now build its classes and plans under it."]}, {"id": "class", "title": "How do I add a class?", "steps": ["Add a recurring class to your weekly schedule.", "Click + Add Class.", "Pick the days it runs.", "Set the time, instructor and capacity.", "Save — it lands on the calendar and opens for booking."]}, {"id": "family", "title": "How do I set up a family account?", "steps": ["A family shares one login and can pay together.", "Click + Add Family.", "Save — then add each member into the family."]}, {"id": "event", "title": "How do I create an event?", "steps": ["Events get their own public sign-up page.", "Click + Add Event.", "Next: set the dates and ticket tiers, then publish."]}, {"id": "belttest", "title": "How do I schedule a belt test?", "steps": ["Schedule a test, invite students, collect fees, promote.", "Click + Add Belt Test.", "Save — then add who is testing."]}, {"id": "broadcast", "title": "How do I send a broadcast?", "steps": ["Send one message to your whole school at once.", "Write a subject and pick who receives it.", "Type your message…", "Then hit Send — it goes out by text and email."]}, {"id": "embed", "title": "How do I put my schedule on my website?", "steps": ["Share your schedule & plans, or embed them on your site.", "Copy a link or embed code — it stays in sync automatically."]}, {"id": "student", "title": "How do I add a member by hand?", "steps": ["Add a member without waiting for an online sign-up.", "Click + Add Student.", "Pick their program, status, and how they pay.", "Save — they are on your roster."]}, {"id": "beltsystem", "title": "How do I create a belt system?", "steps": ["A belt system is the rank ladder for a program.", "Click + Add Belt System.", "Save — then add each belt in order, with colors & fees."]}, {"id": "shift", "title": "How do I set holiday hours (a schedule shift)?", "steps": ["A shift changes your schedule for a date range, then auto-reverts.", "Add a shift — say, Thanksgiving week.", "Set the dates, and pick which classes retime or cancel.", "Save — members get a heads-up before it starts."]}, {"id": "classpack", "title": "How do I create a prepaid class pack?", "steps": ["A class pack is prepaid — buy a bundle of classes up front.", "Add Membership, then set the Type to Class Pack.", "Class Pack access counts down and does not reset.", "Save — sell it like any other plan."]}, {"id": "social", "title": "How do I add my social links?", "steps": ["Your links power the \"Follow us\" footer on every public page & the kiosk.", "Save — leave any blank to hide that icon."]}, {"id": "timezone", "title": "How do I set my school timezone?", "steps": ["Your timezone keeps class times & auto check-in accurate.", "Save Changes — set this before adding members."]}, {"id": "export", "title": "How do I export my roster?", "steps": ["Export exactly the members your current filters show.", "Click Export.", "Tick the columns, then download a CSV or print a PDF."]}, {"id": "convert", "title": "How do I convert a lead to a member?", "steps": ["When a prospect commits, convert them in a click.", "Open the lead…", "…then Convert kicks off enrollment."]}, {"id": "session", "title": "How do I book a private lesson?", "steps": ["Book one-on-one time for a student.", "Click Book Session.", "Set the date & time, then save (charge or no-charge)."]}, {"id": "sessiontype", "title": "How do I add a session type?", "steps": ["Session types are your private-lesson offerings.", "Add a session type.", "Save — now you can sell packs of it."]}, {"id": "sessionpack", "title": "How do I set up a session pack?", "steps": ["A session pack sells prepaid blocks of private lessons.", "Add a session pack.", "Save — members buy it and book against it."]}, {"id": "import", "title": "How do I import my roster?", "steps": ["Bring your whole roster in from a CSV — no re-typing.", "Open the importer and choose your file.", "Match your columns to NMAO, then import."]}, {"id": "branding", "title": "How do I change my brand colors?", "steps": ["Make the dashboard & your public pages match your brand.", "Pick your accent color.", "Save Changes — it updates everywhere your brand shows."]}, {"id": "switchplan", "title": "How do I switch a member to another plan?", "steps": ["Members change plans all the time.", "Open the member…", "…then More actions → Switch Plan.", "Pick the new plan and confirm."]}, {"id": "cancelplan", "title": "How do I cancel a membership?", "steps": ["When a member leaves, cancel their plan.", "Open the member…", "…More actions → Cancel Plan.", "Confirm — billing stops and their spot frees up."]}, {"id": "portalinvite", "title": "How do I give a member portal access?", "steps": ["Members log in with a setup link you send them.", "Open the member…", "…and click Portal Link.", "Copy or send it — they set a password and they are in."]}, {"id": "automation", "title": "How do I turn on automated texts?", "steps": ["Automations send texts on autopilot — birthdays, reminders.", "Open the Automations tab.", "Toggle the ones you want, then Save."]}, {"id": "smsinbox", "title": "How do I reply to member texts?", "steps": ["Members can text your school — you reply right here.", "Open the SMS Inbox tab."]}, {"id": "beltlevel", "title": "How do I add belts to a belt system?", "steps": ["Fill your rank ladder — add belts in order.", "Open a belt system…", "…then Add Belt.", "Set its color & promotion fee, then save."]}, {"id": "attendance", "title": "How do I take attendance?", "steps": ["Take attendance right from your dashboard.", "Open a class from the calendar.", "Tap each student who came — or Mark all present."]}, {"id": "promote", "title": "How do I promote students at a belt test?", "steps": ["After a test, promote whoever passed.", "Manage the belt test…", "…open the Results tab.", "Mark each student Pass — they advance a rank automatically."]}, {"id": "kiosk", "title": "How does front-desk check-in work?", "steps": ["Put this on a tablet at the front desk.", "A member just types their name…", "…their name pops up — they tap it…", "…and tap the big Check In button.", "Done — their attendance is recorded."]}, {"id": "member_reserve", "title": "How do I reserve a spot in a class? (member)", "steps": ["Members reserve their spot from the Schedule.", "Tap RSVP on the class you want.", "Booked! Tap again to cancel — spots update live."]}, {"id": "member_progress", "title": "How does a member track their belt progress?", "steps": ["Progress shows their belt and classes toward the next rank."]}, {"id": "member_membership", "title": "How does a member see their membership?", "steps": ["Profile has their membership, contact info & card on file."]}];
+    // Deeper, plain-language walkthroughs (with navigation context) override the terse
+    // Help Center steps for the guides we've expanded. SHOTS maps a guide to its
+    // annotated screenshot (shown as a visual aid + linked in the reply).
+    var DEEP = {
+      "lead": "To log a new lead — a prospective student who hasn't signed up yet:\n\n1. In the left sidebar, click \"Leads.\"\n2. At the top-right of the Leads page, click \"+ Add Lead.\"\n3. Enter the prospect's name and phone number (and email if you have it).\n4. Note what they're interested in (e.g. Kids Karate) and where they heard about you (Google, walk-in, referral).\n5. Add a quick note so anyone on your team can pick up the follow-up.\n6. Click Save. The lead is now in your pipeline, ready to follow up and convert.",
+      "membership": "To create a membership plan — what members sign up for and get billed for:\n\n1. In the left sidebar of your dashboard, click \"Memberships.\"\n2. At the top-right of the Memberships page, click the gold \"+ Add Membership\" button.\n3. Give the plan a clear name (for example \"Unlimited Monthly\") so members recognize it at signup.\n4. Choose the billing type and price — e.g. Monthly at $149, an Annual plan, or a one-time Class Pack.\n5. Set class access — Unlimited, or a set number of classes per month.\n6. Pick who can see it under \"Visibility\" — Public (shown at signup and in the member app) or Private (staff-only).\n7. Click Save. Your plan is now live and ready to sell at signup.\n\nTip: to make a similar plan fast, click \"Duplicate\" on an existing one and tweak it.",
+      "product": "To add a product you sell at the front desk (gis, gloves, water):\n\n1. In the left sidebar, click \"Retail.\"\n2. At the top-right, click \"+ Add Product.\"\n3. Enter the product name, choose a category, and set the price.\n4. If it comes in sizes or colors, add those as variants so you can track stock per option.\n5. Turn on \"Show in POS\" (front-desk checkout), and \"Show in member app\" if members can buy it there.\n6. Click Save. It now appears in your point of sale, ready to sell.",
+      "instructor": "To add an instructor or front-desk staff member and control what they can do:\n\n1. In the left sidebar, click \"Instructors.\"\n2. At the top-right, click \"+ Add Instructor.\"\n3. Enter their name and email — this is the email they'll use to log in.\n4. Under permissions, turn on only what they need (for example check-in and attendance, but not billing or settings).\n5. Click Save. They get a setup link by email to create a password, then they can sign in to the staff app.",
+      "program": "A program is a discipline you teach (Karate, BJJ, Kickboxing). It's the bucket that holds its classes, plans, and belt ranks — so set this up first.\n\n1. In the left sidebar, click \"Programs.\"\n2. At the top-right, click \"+ Add Program.\"\n3. Name the program (e.g. \"Kids Karate\") and add a short description.\n4. Click Save.\n5. Now you can add classes, membership plans, and a belt system under this program.",
+      "class": "To add a recurring class to your weekly schedule:\n\n1. In the left sidebar, click \"All Classes.\"\n2. At the top-right, click \"+ Add Class.\"\n3. Name the class and pick which program it belongs to.\n4. Choose the day(s) of the week it runs — tick each day for a repeating class.\n5. Set the start time, length, the instructor, and the capacity (max students).\n6. Click Save. It lands on your calendar and opens for member booking right away.",
+      "family": "A family account lets related members (a parent and kids) share one login and pay together.\n\n1. In the left sidebar, click \"Families.\"\n2. At the top-right, click \"+ Add Family.\"\n3. Enter the family name and the main contact (usually the parent) with their email and phone.\n4. Click Save.\n5. Open the new family and use \"Add member\" to link each student to it — billing can then roll up to the family's card on file.",
+      "event": "An event (seminar, tournament, parents' night out) gets its own public sign-up page.\n\n1. In the left sidebar, click \"Events.\"\n2. At the top-right, click \"+ Add Event.\"\n3. Enter the event name, description, date(s), and location.\n4. Add one or more ticket tiers with prices (e.g. Member $20, Non-member $30).\n5. Click Save, then Publish. You get a shareable sign-up link anyone can register and pay through.",
+      "belttest": "To schedule a belt test, invite students, collect fees, and promote them afterward:\n\n1. In the left sidebar, click \"Belt Tests.\"\n2. At the top-right, click \"+ Add Belt Test.\"\n3. Pick the program, set the test date, and (optionally) a testing fee.\n4. Click Save.\n5. Open the test and add the students who are testing — each gets an invite. After the test, use the Results tab to mark passes and promote them automatically.",
+      "broadcast": "To send one message to your whole school at once (by text and email):\n\n1. In the left sidebar, click \"Communications.\"\n2. On the Broadcast tab, click \"New Broadcast\" (top-right).\n3. Write a subject line and choose who receives it (everyone, or a filter like one program or active members).\n4. Type your message in the body.\n5. Click Send — it goes out to the whole group by both text and email.",
+      "embed": "To put your class schedule or plans on your own website:\n\n1. In the left sidebar, click \"Share & Embed.\"\n2. Choose what to share — your Schedule, your Memberships, or your booking page.\n3. For a simple link, click \"Copy link\" and paste it anywhere (email, social, your site menu).\n4. To embed it in a page, click \"Copy embed code\" and paste that snippet into your website editor.\n5. It stays in sync automatically — change a class and the embedded version updates too.",
+      "student": "To add a member yourself (walk-in or phone sign-up) without waiting for an online registration:\n\n1. In the left sidebar, click \"Members.\"\n2. At the top-right, click \"+ Add Student.\"\n3. Enter their name and contact info.\n4. Choose their program, set their status (usually Active), and pick how they pay — assign a membership plan, or mark them comp.\n5. Click Save. They're on your roster and counted in your active members.",
+      "beltsystem": "A belt system is the rank ladder for one program (white, then yellow, on up to black).\n\n1. In the left sidebar, click \"Belt Systems.\"\n2. At the top-right, click \"+ Add Belt System.\"\n3. Name it and link it to the program it belongs to.\n4. Click Save.\n5. Open the new belt system and use \"Add Belt\" to add each rank in order, giving each a color and an optional promotion fee.",
+      "shift": "A schedule shift changes your schedule for a date range (like a holiday week), then automatically reverts.\n\n1. In the left sidebar, click \"Schedule.\"\n2. Near the top of the schedule, click \"Add shift\" (Vacation / Closure).\n3. Name it (e.g. \"Thanksgiving week\") and set the start and end dates.\n4. Choose which classes cancel or move during that range.\n5. Click Save. Members get a heads-up before it starts, and your normal schedule returns automatically after the end date.",
+      "classpack": "A class pack is prepaid — a member buys a bundle of classes up front that counts down as they attend.\n\n1. In the left sidebar, click \"Memberships.\"\n2. At the top-right, click \"+ Add Membership.\"\n3. Set the \"Type\" to \"Class Pack.\"\n4. Enter how many classes are in the pack and the one-time price.\n5. Click Save. Unlike a monthly plan, a class pack doesn't reset each month — it counts down until used up. Sell it like any other plan.",
+      "social": "Your social links power the \"Follow us\" footer on every public page and the front-desk kiosk.\n\n1. In the left sidebar, click \"Share & Embed.\"\n2. Find the Social Links section.\n3. Paste the full web address for each network you use (Instagram, Facebook, YouTube, TikTok).\n4. Leave any box blank to hide that icon.\n5. Click Save — the icons appear on your public pages automatically.",
+      "timezone": "Your timezone keeps class times and automatic check-in accurate — set it before adding members.\n\n1. In the left sidebar, click \"Settings.\"\n2. Find the \"Timezone\" setting under your school info.\n3. Choose your local timezone from the dropdown.\n4. Click \"Save Changes.\"",
+      "export": "To export your roster to a spreadsheet or PDF:\n\n1. In the left sidebar, click \"Members.\"\n2. (Optional) Use the filters at the top to narrow the list — the export includes exactly what's showing.\n3. Click \"Export\" (top-right).\n4. Tick the columns you want to include.\n5. Download it as a CSV (for Excel or Google Sheets) or print it as a PDF.",
+      "convert": "When a lead commits, convert them into a paying member in a click:\n\n1. In the left sidebar, click \"Leads.\"\n2. Click the lead's name to open them.\n3. Click \"Convert\" (Convert to Member).\n4. This starts enrollment — pick their membership plan and payment method and confirm.\n5. They move from your leads pipeline onto your member roster.",
+      "session": "To book one-on-one private lesson time for a student:\n\n1. In the left sidebar, click \"Sessions.\"\n2. Click \"Book Session\" (top-right).\n3. Choose the student and the instructor.\n4. Set the date and time.\n5. Choose whether to charge (against a session pack or card) or mark it no-charge.\n6. Click Save — it's booked and shows on the schedule.",
+      "sessiontype": "Session types are the kinds of private lessons you offer (e.g. \"30-min Private\").\n\n1. In the left sidebar, click \"Sessions.\"\n2. Open the \"Session Types\" area, then click \"Add session type.\"\n3. Name it and set its length and default price.\n4. Click Save. You can now book this type and sell packs of it.",
+      "sessionpack": "A session pack sells a prepaid block of private lessons (e.g. 5 privates up front).\n\n1. In the left sidebar, click \"Sessions.\"\n2. Open the \"Session Packs\" area, then click \"Add session pack.\"\n3. Choose which session type it's for, how many sessions it includes, and the price.\n4. Click Save. Members buy the pack and each booked private draws down from it.",
+      "import": "To bring your whole roster in from another system via a spreadsheet — no re-typing:\n\n1. In the left sidebar, click \"Members.\"\n2. Click \"Import\" (near Export, top-right).\n3. Choose your CSV file (export it from your old system first).\n4. Match each of your spreadsheet's columns to the matching NMAO field (name, email, plan, and so on).\n5. Click Import, review the preview, then confirm — your members load in all at once.",
+      "branding": "To make your dashboard and public pages match your brand:\n\n1. In the left sidebar, click \"Settings.\"\n2. Find the Branding section.\n3. Upload your logo and pick your accent color.\n4. Click \"Save Changes.\" It updates everywhere your brand shows — public sign-up, the member app, emails, and the kiosk.",
+      "switchplan": "To move a member onto a different membership plan:\n\n1. In the left sidebar, click \"Members.\"\n2. Click the member's name to open them.\n3. Click \"More actions,\" then \"Switch Plan.\"\n4. Pick the new plan — the system prorates the change for you.\n5. Confirm. Their billing updates to the new plan going forward.",
+      "cancelplan": "To cancel a member's plan when they leave:\n\n1. In the left sidebar, click \"Members.\"\n2. Click the member's name to open them.\n3. Click \"More actions,\" then \"Cancel Plan.\"\n4. Confirm. Billing stops and their spot frees up. Their history stays on file in case they return.",
+      "portalinvite": "Members log in to the member app with a setup link you send them:\n\n1. In the left sidebar, click \"Members.\"\n2. Click the member's name to open them.\n3. Click \"Portal Link.\"\n4. Copy it, or send it to them directly by text or email.\n5. They open the link, set a password, and they're in — able to see their schedule and membership and book classes.",
+      "automation": "Automations send texts on autopilot — welcome messages, birthdays, class reminders, win-backs:\n\n1. In the left sidebar, click \"Communications.\"\n2. Click the \"Automations\" tab at the top.\n3. Browse the available automations and toggle on the ones you want.\n4. (Optional) Click one to customize its message.\n5. Click Save — they now run automatically in the background.",
+      "smsinbox": "Members can text your school's number and you reply right from the dashboard:\n\n1. In the left sidebar, click \"Communications.\"\n2. Click the \"SMS Inbox\" tab at the top.\n3. Click a conversation on the left to open it.\n4. Type your reply at the bottom and press Send — it reaches them as a text.",
+      "beltlevel": "To fill a belt system's rank ladder by adding belts in order:\n\n1. In the left sidebar, click \"Belt Systems.\"\n2. Click the belt system you want to fill to open it.\n3. Click \"Add Belt.\"\n4. Name the rank, choose its color, and set an optional promotion fee.\n5. Click Save, and repeat for each rank in order (white first, up to black).",
+      "attendance": "To take attendance for a class:\n\n1. In the left sidebar, click \"Home\" (or \"Schedule\").\n2. Click the class on the calendar to open its roster.\n3. Tap each student who showed up to check them in — or click \"Mark all present\" and un-tap anyone who was absent.\n4. Attendance saves as you go and counts toward each student's progress and class packs.",
+      "promote": "To promote students to their next belt after a test:\n\n1. In the left sidebar, click \"Belt Tests.\"\n2. Click the belt test to manage it.\n3. Open the \"Results\" tab.\n4. Mark each student Pass or Fail.\n5. A Pass advances that student to the next rank automatically and records the promotion in their history.",
+      "kiosk": "The kiosk is a self-serve check-in screen for a tablet at your front desk:\n\n1. In the left sidebar, click \"Kiosk\" to launch kiosk mode on the tablet you'll leave at the desk.\n2. A member arriving types the first letters of their name.\n3. Their name pops up — they tap it.\n4. They tap the big \"Check In\" button.\n5. Done — their attendance is recorded, no staff needed.",
+      "member_reserve": "(For members, in the member app or member portal)\n\n1. Open the \"Schedule\" tab.\n2. Find the class you want to attend.\n3. Tap \"RSVP\" on it to reserve your spot.\n4. You're booked — tap again to cancel if plans change. Spots update live, so you'll see when a class is full.",
+      "member_progress": "(For members, in the member app or member portal)\n\n1. Open the \"Progress\" tab.\n2. You'll see your current belt and how many classes you've attended toward your next rank.\n3. As you check in to classes, the progress bar fills in automatically.",
+      "member_membership": "(For members, in the member app or member portal)\n\n1. Open the \"Profile\" (or \"Account\") tab.\n2. There you'll see your current membership plan, your contact info, and the card on file.\n3. You can update your contact details or payment card from the same screen."
+    };
+    var SHOT_BASE = 'https://app.nmao.us/help-shots/';
+    var SHOTS = {
+      lead:SHOT_BASE+'11-leads.jpg', membership:SHOT_BASE+'09-memberships.jpg', product:SHOT_BASE+'14-retail.jpg',
+      instructor:SHOT_BASE+'13-instructors.jpg', program:SHOT_BASE+'06-programs.jpg', class:SHOT_BASE+'03-classes.jpg',
+      family:SHOT_BASE+'12-families.jpg', event:SHOT_BASE+'05-events.jpg', belttest:SHOT_BASE+'08-belt-tests.jpg',
+      broadcast:SHOT_BASE+'16-communications.jpg', embed:SHOT_BASE+'18-share-embed.jpg', student:SHOT_BASE+'10-members.jpg',
+      beltsystem:SHOT_BASE+'07-belt-systems.jpg', shift:SHOT_BASE+'02-schedule.jpg', classpack:SHOT_BASE+'09-memberships.jpg',
+      social:SHOT_BASE+'18-share-embed.jpg', timezone:SHOT_BASE+'19-settings.jpg', export:SHOT_BASE+'10-members.jpg',
+      convert:SHOT_BASE+'11-leads.jpg', session:SHOT_BASE+'04-sessions.jpg', sessiontype:SHOT_BASE+'04-sessions.jpg',
+      sessionpack:SHOT_BASE+'04-sessions.jpg', import:SHOT_BASE+'10-members.jpg', branding:SHOT_BASE+'19-settings.jpg',
+      switchplan:SHOT_BASE+'10-members.jpg', cancelplan:SHOT_BASE+'10-members.jpg', portalinvite:SHOT_BASE+'10-members.jpg',
+      automation:SHOT_BASE+'16-communications.jpg', smsinbox:SHOT_BASE+'16-communications.jpg', beltlevel:SHOT_BASE+'07-belt-systems.jpg',
+      attendance:SHOT_BASE+'01-home.jpg', promote:SHOT_BASE+'08-belt-tests.jpg', kiosk:SHOT_BASE+'22-kiosk.jpg',
+      member_reserve:SHOT_BASE+'member-reserve.jpg', member_progress:SHOT_BASE+'member-progress.jpg', member_membership:SHOT_BASE+'member-membership.jpg'
+    };
+    function openQA(){ document.getElementById('qaPanel').classList.add('open'); document.getElementById('qaSearch').value=''; renderQA(); setTimeout(function(){document.getElementById('qaSearch').focus();},40); }
+    function closeQA(){ document.getElementById('qaPanel').classList.remove('open'); }
+    function renderQA(){
+      var q=(document.getElementById('qaSearch').value||'').toLowerCase().trim();
+      var list=GUIDES.filter(function(g){ if(!q)return true; return (g.title+' '+((g.steps||[]).join(' '))).toLowerCase().indexOf(q)>-1; });
+      var el=document.getElementById('qaList');
+      if(!list.length){ el.innerHTML='<div style="padding:2rem 1rem;color:var(--muted);font-style:italic;text-align:center">No matching answer — write a custom reply.</div>'; return; }
+      el.innerHTML=list.map(function(g){ var p=(g.steps&&g.steps[0])?g.steps[0]:''; var badge=DEEP[g.id]?' <span style="font-size:0.62rem;letter-spacing:0.08em;text-transform:uppercase;color:#B8862C;border:1px solid #B8862C;border-radius:3px;padding:1px 4px;vertical-align:middle">Guided'+(SHOTS[g.id]?' + photo':'')+'</span>':''; return '<div class="qa-item" onclick="insertGuide(\''+g.id+'\')"><div class="t">'+escText(g.title)+badge+'</div><div class="p">'+escText(p)+'</div></div>'; }).join('');
+    }
+    function guideText(g){
+      var link='\nFull step-by-step guide: https://app.nmao.us/help-center.html#guide='+g.id;
+      if(DEEP[g.id]) return DEEP[g.id]+'\n'+link;
+      var steps=g.steps||[]; var intro=steps.length?steps[0]:''; var actions=steps.slice(1); var txt='';
+      if(intro) txt+=intro+'\n\n';
+      actions.forEach(function(s,i){ txt+=(i+1)+'. '+s+'\n'; });
+      txt+=link;
+      return txt;
+    }
+    function insertGuide(id){
+      var g=null; for(var i=0;i<GUIDES.length;i++){ if(GUIDES[i].id===id){ g=GUIDES[i]; break; } } if(!g) return;
+      var ta=document.getElementById('replyInput'); var cur=(ta.value||'').trim();
+      ta.value=(cur?cur+'\n\n':'')+guideText(g); autoGrow(ta); closeQA();
+      if(SHOTS[g.id]){ pendingShot=SHOTS[g.id]; var pv=document.getElementById('qaShotPreview'); document.getElementById('qaShotImg').src=SHOTS[g.id]; document.getElementById('qaShotLink').href='https://app.nmao.us/help-center.html#guide='+g.id; pv.style.display='block'; }
+      else { hideShot(); }
+      ta.focus();
+    }
+    function hideShot(){ pendingShot=null; var pv=document.getElementById('qaShotPreview'); if(pv) pv.style.display='none'; }
+
+    window.onload = function () {
+      var p = new URLSearchParams(window.location.search);
+      token = p.get('t');
+      var saved = '';
+      try { saved = localStorage.getItem('nmao_support_agent') || ''; } catch (e) {}
+      document.getElementById('agentName').value = saved;
+      if (!token) { showError('No reply token found in this link.'); return; }
+      loadThread();
+    };
+
+    function agent() { return (document.getElementById('agentName').value || '').trim(); }
+    function saveAgent() { try { localStorage.setItem('nmao_support_agent', agent()); } catch (e) {} }
+
+    async function api(method, payload) {
+      var opts = { method: method, headers: { 'Authorization': 'Bearer ' + ANON_KEY } };
+      var url = SUPPORT_URL;
+      if (method === 'GET') { url += '?t=' + encodeURIComponent(token); }
+      else { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(payload); }
+      var res = await fetch(url, opts);
+      return res.json();
+    }
+
+    async function loadThread() {
+      try {
+        var r = await api('GET');
+        if (!r.ok) { showError(r.error || 'Unable to load.'); return; }
+        document.getElementById('chatName').textContent = r.school || 'School';
+        status = r.status || 'open';
+        assigned = r.assigned_to || null;
+        renderStatus();
+        renderMessages(r.messages || []);
+        showThread();
+        scrollToBottom();
+      } catch (e) { showError('Unable to load this question. Please try again.'); }
+    }
+
+    function renderStatus() {
+      var sp = document.getElementById('statusPill');
+      var ap = document.getElementById('assignPill');
+      var claim = document.getElementById('claimBtn');
+      var resolve = document.getElementById('resolveBtn');
+      sp.className = 'pill ' + (status === 'resolved' ? 'resolved' : (assigned ? 'claimed' : 'open'));
+      sp.textContent = status === 'resolved' ? 'Resolved' : (assigned ? 'Claimed' : 'Open — unclaimed');
+      if (assigned) { ap.style.display = ''; ap.className = 'pill claimed'; ap.textContent = 'Handled by ' + assigned; claim.style.display = 'none'; }
+      else { ap.style.display = 'none'; claim.style.display = ''; }
+      resolve.textContent = status === 'resolved' ? 'Reopen' : 'Resolve';
+    }
+
+    function renderMessages(msgs) {
+      var el = document.getElementById('chatMessages');
+      if (!msgs.length) { el.innerHTML = '<div class="chat-empty">No messages yet.</div>'; return; }
+      el.innerHTML = msgs.map(function (m) {
+        var out = m.sender === 'nmao';
+        var dt = new Date(m.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+        var who = m.author ? escText(m.author) + ' · ' : '';
+        var shots = (m.attachments || []).map(function (u) { return '<a href="' + u + '" target="_blank" rel="noopener"><img src="' + u + '" style="display:block;max-width:100%;margin-top:0.45rem;border-radius:8px;border:1px solid var(--border)"></a>'; }).join('');
+        var badge = m.kind === 'error' ? '<span style="display:inline-block;font-size:0.62rem;letter-spacing:0.08em;text-transform:uppercase;color:var(--red);border:1px solid var(--red);border-radius:3px;padding:0.05rem 0.35rem;margin-bottom:0.3rem">⚠ Error report</span><br>' : '';
+        return '<div class="bubble ' + (out ? 'outbound' : 'inbound') + '">' + badge + escText(m.body || '') + shots +
+          '<div class="bubble-meta">' + who + dt + '</div></div>';
+      }).join('');
+    }
+
+    async function sendReply() {
+      var input = document.getElementById('replyInput');
+      var body = input.value.trim();
+      if (!body) return;
+      if (!agent()) { showToast('Add your name first so the school knows who replied.', true); document.getElementById('agentName').focus(); return; }
+      saveAgent();
+      var btn = document.getElementById('sendBtn'); btn.disabled = true;
+      try {
+        var shots = pendingShot ? [pendingShot] : [];
+        var r = await api('POST', { t: token, action: 'reply', body: body, agent: agent(), attachments: shots });
+        if (!r.ok) { showToast(r.error || 'Reply failed.', true); btn.disabled = false; return; }
+        appendOutbound(body, agent(), shots);
+        if (!assigned) { assigned = agent(); status = 'open'; renderStatus(); }
+        input.value = ''; autoGrow(input); hideShot(); scrollToBottom();
+      } catch (e) { showToast('Reply failed to send.', true); }
+      btn.disabled = false;
+    }
+
+    async function claimThread() {
+      if (!agent()) { showToast('Add your name first.', true); document.getElementById('agentName').focus(); return; }
+      saveAgent();
+      try {
+        var r = await api('POST', { t: token, action: 'claim', agent: agent() });
+        if (r.ok) { assigned = agent(); renderStatus(); showToast('Claimed — the team sees it is handled by you.'); }
+        else showToast(r.error || 'Could not claim.', true);
+      } catch (e) { showToast('Could not claim.', true); }
+    }
+
+    async function markResolved() {
+      if (status === 'resolved') { showToast('Already resolved — just reply to reopen it.'); return; }
+      try {
+        var r = await api('POST', { t: token, action: 'resolve' });
+        if (r.ok) { status = 'resolved'; renderStatus(); showToast('Marked resolved.'); }
+        else showToast(r.error || 'Could not update.', true);
+      } catch (e) { showToast('Could not update.', true); }
+    }
+
+    function appendOutbound(body, who, shots) {
+      var el = document.getElementById('chatMessages');
+      var empty = el.querySelector('.chat-empty'); if (empty) el.innerHTML = '';
+      var dt = new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+      var div = document.createElement('div'); div.className = 'bubble outbound';
+      var imgs = (shots || []).map(function (u) { return '<a href="' + u + '" target="_blank" rel="noopener"><img src="' + u + '" style="display:block;max-width:100%;margin-top:0.45rem;border-radius:8px;border:1px solid var(--border)"></a>'; }).join('');
+      div.innerHTML = escText(body) + imgs + '<div class="bubble-meta">' + (who ? escText(who) + ' · ' : '') + dt + '</div>';
+      el.appendChild(div);
+    }
+
+    function showThread() {
+      document.getElementById('loadingState').style.display = 'none';
+      document.getElementById('errorState').style.display = 'none';
+      document.getElementById('chatHeader').style.display = 'block';
+      document.getElementById('chatMessages').style.display = 'flex';
+      document.getElementById('chatReply').style.display = 'flex';
+      document.getElementById('qaBar').style.display = 'flex';
+    }
+    function showError(msg) {
+      document.getElementById('loadingState').style.display = 'none';
+      document.getElementById('errorMsg').textContent = msg;
+      document.getElementById('errorState').style.display = 'flex';
+    }
+    function scrollToBottom() { var el = document.getElementById('chatMessages'); requestAnimationFrame(function () { el.scrollTop = el.scrollHeight; }); }
+    var toastTimer = null;
+    function showToast(msg, isErr) {
+      var t = document.getElementById('toast'); t.textContent = msg;
+      t.className = 'toast show' + (isErr ? ' err' : ''); clearTimeout(toastTimer);
+      toastTimer = setTimeout(function () { t.className = 'toast'; }, 4000);
+    }
+    function autoGrow(ta) { ta.style.height = 'auto'; ta.style.height = Math.min(ta.scrollHeight, 112) + 'px'; }
+    function onReplyKey(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendReply(); } }
+    function escText(s) { return (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+  </script>
+</body>
+</html>
