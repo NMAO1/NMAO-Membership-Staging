@@ -35,3 +35,16 @@ Lighter polish only (they already use a sans body): elevation on cards, gold foc
 
 ## To revert any surface
 Delete its `<style id="nmao-design-pass">` block (or just use the `-baseline.html` file). Nothing here can reach production.
+
+---
+
+## Update — v2 (2026-10-22)
+
+**Key finding:** the green you saw is **Evergreen's own brand accent** (`#2E9E6B`, with a green-tinted bg) — not a design bug. Your school **TAOSD is gold** (`#c9a84c`). 567 of the accent usages already follow each school's color via `var(--gold)`; the real gap was interactive **tints** (hovers/focus glows) hardcoded to gold.
+
+Changes in v2:
+1. **Billing-type labels fixed** — the Memberships "Type" column no longer shows raw `ONE_TIME` / `RECURRING`. Now "One-Time", "Recurring", "Annual", etc. (plus a catch-all that title-cases any future value, so a raw enum can never leak again).
+2. **Accent now fully brand-consistent** — added `--accent-rgb` (set from the school's color in `applyBrandColors`). Hovers, focus rings, input glows, scrollbar hovers now use the **school's accent**, not gold. So Evergreen = all green, TAOSD = all gold — one coherent accent per school.
+3. **Card lift (depth)** — cards/panels now sit raised off the page with a subtle top highlight + layered shadow; stat cards lift further on hover.
+
+Still open / deeper follow-up: ~45 hardcoded `#C9A84C` + ~74 gold-tint spots in the base CSS could be migrated to the accent var for 100% consistency (bigger pass); and portal/kiosk can get the same `--accent-rgb` tint treatment.
