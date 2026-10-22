@@ -61,3 +61,8 @@ The accent now follows each school's brand color **everywhere**, across all thre
 - **Left intact on purpose:** 39 quoted `#C9A84C` JS literals — these are either school-color fallbacks (`school.color || '#C9A84C'`, already accent-aware) or semantic status colors (e.g. "pending" amber) that shouldn't change, plus the one canvas color. Swapping them would have needed a real hex and broken rendering.
 
 Net: whatever accent a school picks in Settings now paints the **entire** UI — hovers, focus rings, selected rows, highlights, scrollbars — consistently. Evergreen = all green; TAOSD = all gold.
+
+---
+
+## Radius consistency — resolved (2026-10-22)
+All tile/panel/widget/overlay surfaces now share one card radius; custom controls + inputs match the button/input radius. **DECISION (Brad): list rows stay square** — the one deliberate exception (auto-row, exception-row, family-student-link, fulfillment-row, import-mapping-row, milestone-row, pos-cart-row, session-type-row, sms-inbox-row, video-row). Preserve this when porting to live.
