@@ -22188,8 +22188,15 @@ table tbody tr:hover{ background: rgba(255,255,255,0.025); }
 *::-webkit-scrollbar-thumb{ background: rgba(255,255,255,0.1); border-radius: 999px; border: 2px solid transparent; background-clip: padding-box; }
 *::-webkit-scrollbar-thumb:hover{ background: rgba(var(--accent-rgb),0.45); background-clip: padding-box; }
 
-/* 9 — smoother modal transitions */
+/* 9 — smoother modal transitions + a crafted entrance (fade + gentle scale-in) */
 .modal-overlay{ transition: opacity .2s ease; }
+@keyframes nmaoModalIn{ from{ opacity:0; transform: translateY(10px) scale(0.985); } to{ opacity:1; transform:none; } }
+.modal-overlay.active .modal{ animation: nmaoModalIn .2s cubic-bezier(.2,.7,.3,1); }
+
+/* 10 — input + control micro-polish */
+::placeholder{ color: var(--muted); opacity: 0.75; }
+select{ cursor: pointer; }
+button:disabled,.btn:disabled,.btn-sm:disabled,.panel-action:disabled{ opacity: 0.5; cursor: not-allowed; transform: none !important; box-shadow: none !important; }
 
 </style>
 </body>
