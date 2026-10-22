@@ -4522,6 +4522,10 @@ function applyBrandColors(accent,bg,border,font,surface,fontColor) {
   if (surface)   document.documentElement.style.setProperty('--surface',       surface);
   if (font)      document.documentElement.style.setProperty('--font-display',  "'"+font+"',serif");
   if (fontColor) document.documentElement.style.setProperty('--white',         fontColor);
+  // §ACCENT-RGB — expose the accent as r,g,b so tints (hovers/focus/glows) follow the school's brand
+  // color instead of a hardcoded gold. Powers rgba(var(--accent-rgb), a) in the design layer.
+  try { var _h=String(accent||'').replace('#',''); if(_h.length===3){_h=_h[0]+_h[0]+_h[1]+_h[1]+_h[2]+_h[2];} var _n=parseInt(_h,16);
+    if(!isNaN(_n)) document.documentElement.style.setProperty('--accent-rgb', ((_n>>16)&255)+','+((_n>>8)&255)+','+(_n&255)); } catch(_e){}
 }
 function syncBgColor()         { var v=document.getElementById('settingBgColor').value;      document.getElementById('settingBgColorHex').value=v;      document.documentElement.style.setProperty('--black',v); }
 function syncBgColorText()     { var h=document.getElementById('settingBgColorHex').value;   if(/^#[0-9A-Fa-f]{6}$/.test(h)){ document.getElementById('settingBgColor').value=h;      document.documentElement.style.setProperty('--black',h); } }
@@ -16676,7 +16680,7 @@ async function renderMemberships(){
   if(!nonClassPack.length){tb.innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:2rem">'+(allPrograms.length?'<div style="font-style:italic;margin-bottom:0.5rem">Memberships are how members pay to train.</div><button class="panel-action" onclick="openAddMembership()"><i class="fa-solid fa-plus"></i> Add your first membership</button>':'<div style="font-style:italic;margin-bottom:0.5rem">Create a program first, then add a membership.</div><button class="panel-action" onclick="navigate(\'programs\',null);openAddProgram()"><i class="fa-solid fa-plus"></i> Add a program</button>')+'</td></tr>';return;}
   var mpR=await sb.from('membership_programs').select('membership_id,program_id'); var mpData=mpR.data||[];
   tb.innerHTML=nonClassPack.map(function(m){
-   var tl={monthly:'Monthly',yearly:'Yearly',trial:'Trial',class_pack:'Class Pack'}[m.billing_type]||m.billing_type;
+   var tl={monthly:'Monthly',yearly:'Yearly',trial:'Trial',class_pack:'Class Pack',one_time:'One-Time',recurring:'Recurring',annual:'Annual',pack:'Pack',punch:'Punch Pass'}[m.billing_type]||String(m.billing_type||'').replace(/_/g,' ').replace(/\b\w/g,function(c){return c.toUpperCase();});
    var _bl=parseInt(m.billing_length,10);
    if(m.billing_type==='monthly'&&m.billing_unit==='months'&&_bl>1){tl='Every '+_bl+' months';}
    var price='$'+parseFloat(m.price||0).toFixed(2)+(m.billing_type==='monthly'?((m.billing_unit==='months'&&_bl>1)?('/'+_bl+'mo'):'/mo'):m.billing_type==='yearly'?'/yr':'');
@@ -22103,20 +22107,19 @@ var url = SURL + "/functions/v1/event-og?id=" + window.currentEventId;
 
 <style id="nmao-design-pass">
 /* ═══════════════════════════════════════════════════════════════════════
-   NMAO DESIGN PASS — staging only. Reversible: delete this <style> block to
-   return to baseline. Respects per-school brand settings:
-     • --font-display = the school's brand/headline font (Settings → font)
-     • --gold         = the school's accent color (Settings → accent)
-     • green          = reserved for success states only
+   NMAO DESIGN PASS v2 — staging only. Reversible: delete this <style> block.
+   Respects per-school brand: --font-display = brand/headline font,
+   --gold = accent, --accent-rgb = accent as r,g,b (set by applyBrandColors),
+   green = success only.
    ═══════════════════════════════════════════════════════════════════════ */
 :root{
   --font-ui: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  --accent-rgb: 201,168,76;           /* default; overridden per-school at runtime */
   --radius-sm: 8px; --radius-md: 12px; --radius-lg: 16px;
-  --elev-1: 0 1px 2px rgba(0,0,0,0.35);
-  --elev-2: 0 8px 24px rgba(0,0,0,0.38), 0 0 0 1px rgba(255,255,255,0.03);
+  --elev-2: 0 10px 30px rgba(0,0,0,0.4), 0 2px 6px rgba(0,0,0,0.3);
   --hair: rgba(255,255,255,0.06);
 }
-/* 1 — TYPE: clean sans for everyday UI, brand serif reserved for headlines */
+/* 1 — TYPE: clean sans UI, brand serif reserved for headlines */
 body{ font-family: var(--font-ui); -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; letter-spacing: 0; }
 h1,h2,h3,.panel-title,.modal-title,.content-heading h2,.view-title,
 .home-stat-num,.stat-value,.rev-amount,.goal-amount,.payroll-month-amount,.goal-current,
@@ -22129,27 +22132,30 @@ table,.chip,label,.stat-label,.home-stat-label,.badge-red,.badge-gold,.badge-gre
 }
 .home-stat-num,.stat-value,.rev-amount,.goal-amount,td{ font-variant-numeric: tabular-nums; }
 
-/* 2 — ELEVATION: soften hard 1px borders into depth */
-.panel,.card,.home-stat-card{ border-radius: var(--radius-md); border-color: var(--hair); box-shadow: var(--elev-1); }
+/* 2 — CARD LIFT: cards now sit raised off the page (inset top highlight + layered shadow) */
+.panel,.card,.home-stat-card{
+  border-radius: var(--radius-md); border-color: var(--hair);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), 0 2px 4px rgba(0,0,0,0.28), 0 10px 28px rgba(0,0,0,0.22);
+}
 .modal{ border-radius: var(--radius-lg); box-shadow: var(--elev-2); }
 .home-stat-card{ transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease; }
-.home-stat-card:hover{ transform: translateY(-2px); box-shadow: var(--elev-2); border-color: rgba(201,168,76,0.35); }
+.home-stat-card:hover{ transform: translateY(-3px); box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), 0 14px 34px rgba(0,0,0,0.3); border-color: rgba(var(--accent-rgb),0.35); }
 
-/* 3 — NAV: rounded pills, soft hover */
+/* 3 — NAV: rounded pills, accent-tinted hover */
 .nav-item{ border-radius: var(--radius-sm); margin: 2px 8px; padding: 0.55rem 0.72rem; transition: background .15s ease, color .15s ease; }
-.nav-item:hover{ background: rgba(255,255,255,0.045); }
+.nav-item:hover{ background: rgba(var(--accent-rgb),0.06); }
 .nav-section-label{ opacity: 0.58; }
 
-/* 4 — BUTTONS: consistent shape + lift + focus rings */
+/* 4 — BUTTONS: consistent shape + lift + brand-accent focus rings */
 .btn,.btn-sm,.panel-action,.setup-step-cta,.btn-gold-full{ border-radius: var(--radius-sm); transition: transform .14s ease, box-shadow .14s ease, background .14s ease, border-color .14s ease; }
 .btn:hover,.btn-sm:hover,.panel-action:hover,.setup-step-cta:hover{ transform: translateY(-1px); }
 .btn:active,.btn-sm:active,.panel-action:active{ transform: translateY(0); }
 a:focus-visible,button:focus-visible,.btn:focus-visible,.btn-sm:focus-visible,.nav-item:focus-visible,
 input:focus-visible,select:focus-visible,textarea:focus-visible{ outline: 2px solid var(--gold); outline-offset: 2px; }
 
-/* 5 — INPUTS: softer idle border, gold focus ring */
+/* 5 — INPUTS: softer idle border, brand-accent focus glow */
 .field input,.field select,.field textarea{ border-radius: var(--radius-sm); border-color: rgba(255,255,255,0.09); transition: border-color .15s ease, box-shadow .15s ease; }
-.field input:focus,.field select:focus,.field textarea:focus{ border-color: var(--gold); box-shadow: 0 0 0 3px rgba(201,168,76,0.16); outline: none; }
+.field input:focus,.field select:focus,.field textarea:focus{ border-color: var(--gold); box-shadow: 0 0 0 3px rgba(var(--accent-rgb),0.18); outline: none; }
 
 /* 6 — TABLES: more air, hover rows, quieter gridlines, caps headers */
 table tbody td{ padding-top: 0.72rem; padding-bottom: 0.72rem; border-color: rgba(255,255,255,0.05); }
@@ -22160,11 +22166,11 @@ table tbody tr:hover{ background: rgba(255,255,255,0.025); }
 /* 7 — BADGES / CHIPS: unified pill shape */
 .chip,.badge-red,.badge-gold,.badge-green,.badge-blue,.badge-black{ border-radius: 999px; letter-spacing: 0.02em; }
 
-/* 8 — premium thin scrollbars */
+/* 8 — premium thin scrollbars (accent on hover) */
 *::-webkit-scrollbar{ width: 10px; height: 10px; }
 *::-webkit-scrollbar-track{ background: transparent; }
 *::-webkit-scrollbar-thumb{ background: rgba(255,255,255,0.1); border-radius: 999px; border: 2px solid transparent; background-clip: padding-box; }
-*::-webkit-scrollbar-thumb:hover{ background: rgba(201,168,76,0.4); background-clip: padding-box; }
+*::-webkit-scrollbar-thumb:hover{ background: rgba(var(--accent-rgb),0.45); background-clip: padding-box; }
 
 /* 9 — smoother modal transitions */
 .modal-overlay{ transition: opacity .2s ease; }
