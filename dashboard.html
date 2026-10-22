@@ -22132,14 +22132,24 @@ table,.chip,label,.stat-label,.home-stat-label,.badge-red,.badge-gold,.badge-gre
 }
 .home-stat-num,.stat-value,.rev-amount,.goal-amount,td{ font-variant-numeric: tabular-nums; }
 
-/* 2 — CARD LIFT: cards now sit raised off the page (inset top highlight + layered shadow) */
-.panel,.card,.home-stat-card{
+/* 2 — CARD LIFT + one consistent corner radius across EVERY card/tile/box container */
+.panel,.card,.home-stat-card,.rev-card,.alert-card,.session-card,.pack-template-card,.report-type-card,
+.lead-card,.product-card,.belt-level-card,.day-view-card,.class-roster-card,.discount-card,.plan-card,
+.test-card,.sms-thread-card,.fulfillment-panel,.no-show-policy-box,.unsaved-box{
   border-radius: var(--radius-md); border-color: var(--hair);
+}
+/* prominent surface tiles get the full lift */
+.panel,.card,.home-stat-card,.rev-card,.report-type-card{
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), 0 2px 4px rgba(0,0,0,0.28), 0 10px 28px rgba(0,0,0,0.22);
 }
+/* dense list cards get a quieter shadow so they don't feel heavy */
+.lead-card,.product-card,.discount-card,.plan-card,.test-card,.session-card,.pack-template-card,.belt-level-card,.sms-thread-card{
+  box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
 .modal{ border-radius: var(--radius-lg); box-shadow: var(--elev-2); }
-.home-stat-card{ transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease; }
-.home-stat-card:hover{ transform: translateY(-3px); box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), 0 14px 34px rgba(0,0,0,0.3); border-color: rgba(var(--accent-rgb),0.35); }
+/* matching hover lift on the clickable prominent tiles */
+.home-stat-card,.rev-card,.report-type-card{ transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease; }
+.home-stat-card:hover,.rev-card:hover,.report-type-card:hover{ transform: translateY(-3px); box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), 0 14px 34px rgba(0,0,0,0.3); border-color: rgba(var(--accent-rgb),0.35); }
 
 /* 3 — NAV: rounded pills, accent-tinted hover */
 .nav-item{ border-radius: var(--radius-sm); margin: 2px 8px; padding: 0.55rem 0.72rem; transition: background .15s ease, color .15s ease; }
