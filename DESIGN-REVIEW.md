@@ -48,3 +48,16 @@ Changes in v2:
 3. **Card lift (depth)** — cards/panels now sit raised off the page with a subtle top highlight + layered shadow; stat cards lift further on hover.
 
 Still open / deeper follow-up: ~45 hardcoded `#C9A84C` + ~74 gold-tint spots in the base CSS could be migrated to the accent var for 100% consistency (bigger pass); and portal/kiosk can get the same `--accent-rgb` tint treatment.
+
+---
+
+## Update — deeper accent pass (2026-10-22)
+
+The accent now follows each school's brand color **everywhere**, across all three surfaces — no stray gold left on a green school (or vice-versa).
+
+- **Dashboard:** 71 gold *tints* (`rgba(201,168,76,…)` hovers / focus glows / selected states / highlights) + 4 CSS-level solid golds → brand accent variable. 0 stray gold tints remain.
+- **Portal:** 17 tints swapped (+ `--accent-rgb` plumbed from the school color). One canvas stroke color left as a literal (CSS variables don't resolve inside `<canvas>`).
+- **Kiosk:** 11 tints swapped (+ `--accent-rgb` plumbed).
+- **Left intact on purpose:** 39 quoted `#C9A84C` JS literals — these are either school-color fallbacks (`school.color || '#C9A84C'`, already accent-aware) or semantic status colors (e.g. "pending" amber) that shouldn't change, plus the one canvas color. Swapping them would have needed a real hex and broken rendering.
+
+Net: whatever accent a school picks in Settings now paints the **entire** UI — hovers, focus rings, selected rows, highlights, scrollbars — consistently. Evergreen = all green; TAOSD = all gold.
