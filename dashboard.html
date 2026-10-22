@@ -505,6 +505,25 @@
   </style>
 </head>
 <body class="dashboard">
+<!-- §BOOT-SPLASH (staging) — branded first-load screen; self-contained so it styles from first paint. -->
+<div id="nmaoBootSplash">
+  <div class="bs-word">NMAO</div>
+  <div class="bs-sub">National Martial Arts Organization</div>
+  <div class="bs-bar"><span></span></div>
+</div>
+<style>
+#nmaoBootSplash{position:fixed;inset:0;z-index:99999;background:#0A0A0A;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1.1rem;transition:opacity .55s ease,visibility .55s ease;}
+#nmaoBootSplash.bs-hide{opacity:0;visibility:hidden;pointer-events:none;}
+#nmaoBootSplash .bs-word{font-family:'Libre Baskerville','Cormorant Garamond',Georgia,serif;font-size:3.1rem;letter-spacing:0.2em;color:#C9A84C;line-height:1;}
+#nmaoBootSplash .bs-sub{font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif;font-size:0.68rem;letter-spacing:0.28em;text-transform:uppercase;color:#8A8372;}
+#nmaoBootSplash .bs-bar{width:150px;height:2px;background:rgba(255,255,255,0.08);border-radius:2px;overflow:hidden;position:relative;margin-top:0.4rem;}
+#nmaoBootSplash .bs-bar span{position:absolute;top:0;bottom:0;width:40%;background:#C9A84C;border-radius:2px;animation:bsSlide 1.15s ease-in-out infinite;}
+@keyframes bsSlide{0%{left:-45%;}100%{left:100%;}}
+</style>
+<script>
+window.hideBootSplash=function(){var s=document.getElementById('nmaoBootSplash');if(!s||s.classList.contains('bs-hide'))return;s.classList.add('bs-hide');setTimeout(function(){if(s&&s.parentNode)s.parentNode.removeChild(s);},700);};
+setTimeout(function(){if(window.hideBootSplash)window.hideBootSplash();},12000); // failsafe: never stay stuck
+</script>
 
 <!-- ═══════════════════ §LOADING ═══════════════════ -->
 <div id="loadingScreen">
@@ -4241,6 +4260,7 @@ async function init() {
     buildSetupChecklist();
     buildInstructorComparison();
   loadRevenue();
+    if(window.hideBootSplash) window.hideBootSplash();   // §BOOT-SPLASH — home view is rendered; fade it out
     await handleStripeOAuthReturn();
     await loadStripeConnectStatus();
     await loadSmsUsageWidget();
