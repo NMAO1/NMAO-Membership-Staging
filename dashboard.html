@@ -10,6 +10,7 @@
   <link rel="apple-touch-icon" href="/pwa/staff-192.png" />
   <script>if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('/sw.js').catch(function(){});});}</script>
   <title>NMAO Platform</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230A0A0A'/%3E%3Crect x='1.5' y='1.5' width='29' height='29' rx='6' fill='none' stroke='%23C9A84C' stroke-opacity='0.55'/%3E%3Ctext x='16' y='23' text-anchor='middle' font-family='Georgia,serif' font-size='20' font-weight='700' fill='%23C9A84C'%3EN%3C/text%3E%3C/svg%3E" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:wght@400;700&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300&family=Lato:wght@300;400;700&family=Inter:wght@300;400;600&family=Oswald:wght@300;400;600&family=Nunito:wght@300;400;700&display=swap" rel="stylesheet" />
@@ -4404,6 +4405,7 @@ async function loadSchool() {
     if (r.error || !r.data) return;
     var d = r.data;
     window.schoolData = d;
+    try{ document.title = (d.name || 'NMAO') + ' · ' + ({home:'Dashboard'}[window.__currentPage] || 'Dashboard'); }catch(_e){}  // §TAB-TITLE base (home is default-active)
     renderTrialGate(d);
     applyBillingGate(d);
     if (d.welcomed === false) {
@@ -5790,6 +5792,8 @@ function navigate(page,el){
   if(el){el.classList.add('active');}else{var navEl=document.getElementById('nav-'+page);if(navEl)navEl.classList.add('active');}
   var titles={home:'Dashboard',schedule:"Today's Schedule",classes:'All Classes',sessions:'Sessions',programs:'Programs',belts:'Belt Systems',belttests:'Belt Tests',memberships:'Memberships',members:'Members',leads:'Leads',families:'Families',instructors:'Instructors',retail:'Retail',payments:'Payments',communications:'Communications',analytics:'Analytics',settings:'Settings',billing:'Billing',shareembed:'Share & Embed',integrations:'Integrations',growth:'Growth Engine'};
   document.getElementById('pageTitle').textContent=titles[page]||page;
+  // §TAB-TITLE — browser tab reads "School · Section"
+  try{ var _sn=(typeof schoolData!=='undefined'&&schoolData&&schoolData.name)?schoolData.name:'NMAO'; document.title=_sn+' · '+(titles[page]||page); }catch(_e){}
   document.querySelector('.main').scrollTo({top:0,behavior:'smooth'});
   // Lazy loads on navigate
   // §CHECKLIST-REFRESH (A1) — re-evaluate the setup checklist every time the owner returns to the
