@@ -4425,7 +4425,7 @@ async function loadSchool() {
     if(document.getElementById('bookingPageLinkPreview')){var bsg=(d.slug)||(window.schoolData&&window.schoolData.slug)||'';document.getElementById('bookingPageLinkPreview').textContent=bsg?('app.nmao.us/classes.html?s='+bsg):'Set your link name above first, then save.';}
     document.getElementById('settingState').value = d.state || '';
     var col=d.color||'#C9A84C', bgCol=d.bg_color||'#0A0A0A', borderCol=d.border_color||'#2A2520';
-    var surfaceCol=d.surface_color||'#141414', fontCol=d.font_color||'#F5F0E8', font=d.font_family||'Cormorant Garamond';
+    var surfaceCol=d.surface_color||'#141414', fontCol=d.font_color||'#F5F0E8', font=d.font_family||'Libre Baskerville';
     selectedFont = font;
     document.getElementById('settingColor').value          = col;     document.getElementById('settingColorHex').value          = col;
     document.getElementById('settingBgColor').value        = bgCol;   document.getElementById('settingBgColorHex').value        = bgCol;
