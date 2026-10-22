@@ -22150,6 +22150,12 @@ table,.chip,label,.stat-label,.home-stat-label,.badge-red,.badge-gold,.badge-gre
 /* matching hover lift on the clickable prominent tiles */
 .home-stat-card,.rev-card,.report-type-card{ transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease; }
 .home-stat-card:hover,.rev-card:hover,.report-type-card:hover{ transform: translateY(-3px); box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), 0 14px 34px rgba(0,0,0,0.3); border-color: rgba(var(--accent-rgb),0.35); }
+/* 2b — remaining tile/panel/widget/overlay surfaces → card radius (consistency sweep) */
+.revenue-goal-widget,.setup-banner,.pipeline-col,.pos-total,.cd-zone,.class-field-config,
+.manual-payment-form,.tg-card,.detail-drawer,.day-popover,.plan-menu,.quick-add-menu{ border-radius: var(--radius-md) !important; }
+/* 2c — custom controls + inputs → match the button/input radius */
+.day-btn,.font-option,.cal-view-toggle,.pos-qty-btn,.pos-quick-item,.alert-type-btn,.anim-option,
+.cd-act-btn,.avail-time-input,.booking-slug-input{ border-radius: var(--radius-sm) !important; }
 
 /* 3 — NAV: rounded pills, accent-tinted hover */
 .nav-item{ border-radius: var(--radius-sm); margin: 2px 8px; padding: 0.55rem 0.72rem; transition: background .15s ease, color .15s ease; }
